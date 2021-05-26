@@ -26,3 +26,11 @@ _site/
 .sass-cache/
 .jekyll-cache/
 .jekyll-metadata
+
+#-------------
+# odo specific
+# ------------
+odo
+tests
+.idea
+reports

@@ -112,6 +112,11 @@ grid_navigation:
       cta: Read more
       url: 'docs/using-devfile-lifecycle-events'
 
+    - title: Using the odo.dev.push.path related attributes
+      excerpt: Push only the specified files and folders to the component.
+      cta: Read more
+      url: 'docs/using-devfile-odo.dev.push.path-attribute'
+
     - title: Architecture of odo
       excerpt: A general overview of the odo architecture
       cta: Read more
