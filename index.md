@@ -52,6 +52,11 @@ grid_navigation:
       cta: Read more
       url: 'docs/deploying-a-devfile-using-odo'
 
+    - title: Deploying your first application using odo on IBM Z & Power
+      excerpt: Learn how to deploy an application using odo and Devfile on IBM Z & Power
+      cta: Read more
+      url: 'docs/deploying-a-devfile-using-odo-on-IBM-Z-and-Power'
+
     - title: Devfile file reference
       excerpt: An overview of the Devfile yaml file format, learn how to customize your devfile.yaml file
       cta: Read more

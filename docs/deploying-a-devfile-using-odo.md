@@ -17,8 +17,8 @@ page_nav:
         content: Understanding odo
         url: '/docs/understanding-odo'
     next:
-        content: Devfile file reference
-        url: '/file-reference/'
+        content: Deploy a devfile on IBM Z & Power
+        url: '/docs/deploying-a-devfile-using-odo-on-IBM-Z-and-Power'
 ---
 # Introduction to devfile
 
