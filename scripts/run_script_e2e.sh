@@ -20,7 +20,13 @@ shout "Testing against 4x cluster"
 
 shout "Logging into 4x cluster for some setup (logs hidden)"
 set +x
-oc login -u kubeadmin -p ${OCP4X_KUBEADMIN_PASSWORD} --insecure-skip-tls-verify  ${OCP4X_API_URL}
+# for PSI
+#oc login -u kubeadmin -p ${OCP4X_KUBEADMIN_PASSWORD} --insecure-skip-tls-verify  ${OCP4X_API_URL}
+# Login to IBM Cloud using service account API Key
+ibmcloud login --apikey $IBMC_OCP47_APIKEY -a cloud.ibm.com -r eu-de -g "Developer CI and QE"
+
+# Login to cluster in IBM Cloud using cluster API key
+oc login --token=$IBMC_OCLOGIN_APIKEY --server=$IBMC_OCP47_SERVER
 set -x
 
 shout "Doing some presetup"
@@ -78,7 +84,7 @@ fi
 shout "cleaning up post tests"
 shout "Logging into 4x cluster for cleanup (logs hidden)"
 set +x
-oc login -u kubeadmin -p ${OCP4X_KUBEADMIN_PASSWORD} --insecure-skip-tls-verify ${OCP4X_API_URL}
+oc login --token=$IBMC_OCLOGIN_APIKEY --server=$IBMC_OCP47_SERVER
 set -x
 
 shout "Cleaning up some leftover projects"
