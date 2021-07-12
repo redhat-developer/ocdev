@@ -62,8 +62,8 @@ func (o *ServiceOptions) Run(cmd *cobra.Command) (err error) {
 	if log.IsJSON() {
 		machineoutput.OutputSuccess(newCatalogListOutput(o.csvs))
 	} else {
-		if len(o.csvs.Items) == 0 && len(o.services.Items) == 0 {
-			log.Info("no deployable services/operators found")
+		if len(o.csvs.Items) == 0 {
+			log.Info("no deployable operators found")
 			return
 		}
 
