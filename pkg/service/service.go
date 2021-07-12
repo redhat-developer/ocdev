@@ -933,6 +933,33 @@ func (d *DynamicCRD) AddComponentLabelsToCRD(labels map[string]string) {
 	metaMap["labels"] = labels
 }
 
+func (d *DynamicCRD) GetGVK() (group, version, kind string, err error) {
+	apiVersion, ok := d.OriginalCRD["apiVersion"].(string)
+	if !ok {
+		err = errors.New("couldn't parse GVK information")
+		return
+	}
+
+	apiVersionList := strings.SplitN(apiVersion, "/", 2)
+	if len(apiVersionList) == 2 {
+		// for something like Deployment that's available in "apps/v1"
+		group = apiVersionList[0]
+		version = apiVersionList[1]
+	} else {
+		// for something like Pod that's available in "v1"
+		group = "core"
+		version = apiVersionList[0]
+	}
+
+	kind, ok = d.OriginalCRD["kind"].(string)
+	if !ok {
+		err = errors.New("couldn't parse GVK information")
+		return
+	}
+
+	return group, version, kind, nil
+}
+
 // PushServiceFromKubernetesInlineComponents updates service(s) from Kubernetes Inlined component in a devfile by creating new ones or removing old ones
 // returns true if the component needs to be restarted (when a service binding has been created or deleted)
 func PushServiceFromKubernetesInlineComponents(client *kclient.Client, k8sComponents []devfile.Component, labels map[string]string) (bool, error) {
@@ -985,6 +1012,7 @@ func PushServiceFromKubernetesInlineComponents(client *kclient.Client, k8sCompon
 
 		cr, csv, err := GetCSV(client, d.OriginalCRD)
 		if err != nil {
+			_ = isInlineResourceSupported(client, d)
 			return false, err
 		}
 
@@ -1135,4 +1163,14 @@ func getCRDName(crd map[string]interface{}) (string, bool) {
 
 func isLinkResource(kind string) bool {
 	return kind == "ServiceBinding"
+}
+
+func isInlineResourceSupported(client *kclient.Client, crd *DynamicCRD) bool {
+	group, version, kind, err := crd.GetGVK()
+	if err != nil {
+		return false
+	}
+
+	supported, _ := client.IsResourceSupported(group, version, kind)
+	return supported
 }
