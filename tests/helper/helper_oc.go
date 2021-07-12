@@ -542,6 +542,11 @@ func (oc OcRunner) GetEnvsDevFileDeployment(componentName, appName, projectName 
 	return mapOutput
 }
 
+// GetEnvRefNames gets the ref values from the envFroms of the deployment belonging to the given data
+func (oc OcRunner) GetEnvRefNames(componentName, appName, projectName string) []string {
+	return GetEnvRefNames(oc.path, componentName, appName, projectName)
+}
+
 // WaitForDCRollout wait for DeploymentConfig to finish active rollout
 // timeout is a maximum wait time in seconds
 func (oc OcRunner) WaitForDCRollout(dcName string, project string, timeout time.Duration) {
@@ -757,4 +762,9 @@ func (oc OcRunner) WaitForRunnerCmdOut(args []string, timeout int, errOnFail boo
 // CreateSecret takes secret name, password and the namespace where we want to create the specific secret into the cluster
 func (oc OcRunner) CreateSecret(secretName, secretPass, project string) {
 	Cmd(oc.path, "create", "secret", "generic", secretName, "--from-literal=password="+secretPass, "-n", project).ShouldPass()
+}
+
+// GetSecrets gets all the secrets belonging to the project
+func (oc OcRunner) GetSecrets(project string) string {
+	return GetSecrets(oc.path, project)
 }

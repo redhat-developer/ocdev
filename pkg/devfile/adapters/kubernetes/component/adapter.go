@@ -159,28 +159,7 @@ func (a Adapter) Push(parameters common.PushParameters) (err error) {
 	}
 	s.End(true)
 
-	log.Info("\nUpdating services")
-	// fetch the "kubernetes inlined components" to create them on cluster
-	// from odo standpoint, these components contain yaml manifest of an odo service or an odo link
-	k8sComponents, err := a.Devfile.Data.GetComponents(parsercommon.DevfileOptions{
-		ComponentOptions: parsercommon.ComponentOptions{ComponentType: devfilev1.KubernetesComponentType},
-	})
-	if err != nil {
-		return errors.Wrap(err, "error while trying to fetch service(s) from devfile")
-	}
 	labels := componentlabels.GetLabels(a.ComponentName, a.AppName, true)
-	// create the Kubernetes objects from the manifest and delete the ones not in the devfile
-	needRestart, err := service.PushServiceFromKubernetesInlineComponents(a.Client.GetKubeClient(), k8sComponents, labels)
-	if err != nil {
-		return errors.Wrap(err, "failed to create service(s) associated with the component")
-	}
-
-	if componentExists && needRestart {
-		err = a.Client.GetKubeClient().WaitForPodNotReady(podName)
-		if err != nil {
-			return err
-		}
-	}
 
 	log.Infof("\nCreating Kubernetes resources for component %s", a.ComponentName)
 
@@ -205,6 +184,15 @@ func (a Adapter) Push(parameters common.PushParameters) (err error) {
 		return errors.Wrap(err, "unable to create or update component")
 	}
 
+	// fetch the "kubernetes inlined components" to create them on cluster
+	// from odo standpoint, these components contain yaml manifest of an odo service or an odo link
+	k8sComponents, err := a.Devfile.Data.GetComponents(parsercommon.DevfileOptions{
+		ComponentOptions: parsercommon.ComponentOptions{ComponentType: devfilev1.KubernetesComponentType},
+	})
+	if err != nil {
+		return errors.Wrap(err, "error while trying to fetch service(s) from devfile")
+	}
+
 	a.deployment, err = a.Client.GetKubeClient().WaitForDeploymentRollout(a.deployment.Name)
 	if err != nil {
 		return errors.Wrap(err, "error while waiting for deployment rollout")
@@ -212,6 +200,32 @@ func (a Adapter) Push(parameters common.PushParameters) (err error) {
 
 	// Wait for Pod to be in running state otherwise we can't sync data or exec commands to it.
 	pod, err := a.getPod(true)
+	if err != nil {
+		return errors.Wrapf(err, "unable to get pod for component %s", a.ComponentName)
+	}
+
+	// create the Kubernetes objects from the manifest and delete the ones not in the devfile
+	needRestart, err := service.PushServiceFromKubernetesInlineComponents(a.Client.GetKubeClient(), k8sComponents, labels, generator.GetOwnerReference(a.deployment), a.deployment)
+	if err != nil {
+		return errors.Wrap(err, "failed to create service(s) associated with the component")
+	}
+
+	if needRestart {
+		s := log.Spinner("Restarting the component")
+		defer s.End(false)
+		err = a.Client.GetKubeClient().WaitForPodNotReady(pod.Name)
+		if err != nil {
+			return err
+		}
+		s.End(true)
+		a.deployment, err = a.Client.GetKubeClient().WaitForDeploymentRollout(a.deployment.Name)
+		if err != nil {
+			return errors.Wrap(err, "error while waiting for deployment rollout")
+		}
+	}
+
+	// Wait for Pod to be in running state otherwise we can't sync data or exec commands to it.
+	pod, err = a.getPod(true)
 	if err != nil {
 		return errors.Wrapf(err, "unable to get pod for component %s", a.ComponentName)
 	}

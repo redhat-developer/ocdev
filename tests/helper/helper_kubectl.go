@@ -319,3 +319,13 @@ func (kubectl KubectlRunner) WaitForRunnerCmdOut(args []string, timeout int, err
 func (kubectl KubectlRunner) CreateSecret(secretName, secretPass, project string) {
 	Cmd(kubectl.path, "create", "secret", "generic", secretName, "--from-literal=password="+secretPass, "-n", project).ShouldPass()
 }
+
+// GetSecrets gets all the secrets belonging to the project
+func (kubectl KubectlRunner) GetSecrets(project string) string {
+	return GetSecrets(kubectl.path, project)
+}
+
+// GetEnvRefNames gets the ref values from the envFroms of the deployment belonging to the given data
+func (kubectl KubectlRunner) GetEnvRefNames(componentName, appName, projectName string) []string {
+	return GetEnvRefNames(kubectl.path, componentName, appName, projectName)
+}

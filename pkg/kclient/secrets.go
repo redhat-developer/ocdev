@@ -107,6 +107,24 @@ func (c *Client) GetSecret(name, namespace string) (*corev1.Secret, error) {
 	return secret, nil
 }
 
+// UpdateSecret updates the given Secret object in the given namespace
+func (c *Client) UpdateSecret(secret *corev1.Secret, namespace string) (*corev1.Secret, error) {
+	secret, err := c.KubeClient.CoreV1().Secrets(namespace).Update(context.TODO(), secret, metav1.UpdateOptions{})
+	if err != nil {
+		return nil, errors.Wrapf(err, "unable to update the secret %s", secret)
+	}
+	return secret, nil
+}
+
+// DeleteSecret updates the given Secret object in the given namespace
+func (c *Client) DeleteSecret(secretName, namespace string) error {
+	err := c.KubeClient.CoreV1().Secrets(namespace).Delete(context.TODO(), secretName, metav1.DeleteOptions{})
+	if err != nil {
+		return errors.Wrapf(err, "unable to delete the secret %s", secretName)
+	}
+	return nil
+}
+
 // CreateSecret generates and creates the secret
 // commonObjectMeta is the ObjectMeta for the service
 func (c *Client) CreateSecret(objectMeta metav1.ObjectMeta, data map[string]string, ownerReference metav1.OwnerReference) error {
@@ -124,7 +142,7 @@ func (c *Client) CreateSecret(objectMeta metav1.ObjectMeta, data map[string]stri
 	return nil
 }
 
-// Create a secret for each port, containing the host and port of the component
+// CreateSecrets creates a secret for each port, containing the host and port of the component
 // This is done so other components can later inject the secret into the environment
 // and have the "coordinates" to communicate with this component
 func (c *Client) CreateSecrets(componentName string, commonObjectMeta metav1.ObjectMeta, svc *corev1.Service, ownerReference metav1.OwnerReference) error {

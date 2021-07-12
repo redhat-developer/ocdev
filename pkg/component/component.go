@@ -20,6 +20,8 @@ import (
 	"github.com/openshift/odo/pkg/devfile/adapters/common"
 	"github.com/openshift/odo/pkg/kclient"
 	"github.com/openshift/odo/pkg/localConfigProvider"
+	"github.com/openshift/odo/pkg/service"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	"github.com/openshift/odo/pkg/envinfo"
 
@@ -1562,18 +1564,12 @@ func getRemoteComponentMetadata(client *occlient.Client, componentName string, a
 		}
 	}
 
-	ok, err := client.GetKubeClient().IsServiceBindingSupported()
+	linkedSecrets := fromCluster.GetLinkedSecrets()
+	err = setLinksServiceNames(client, linkedSecrets, componentlabels.GetSelector(componentName, applicationName))
 	if err != nil {
-		return Component{}, fmt.Errorf("unable to check if service binding is supported: %w", err)
+		return Component{}, fmt.Errorf("unable to get name of services: %w", err)
 	}
-	if ok {
-		linkedSecrets := fromCluster.GetLinkedSecrets()
-		err = setLinksServiceNames(client, linkedSecrets)
-		if err != nil {
-			return Component{}, fmt.Errorf("unable to get name of services: %w", err)
-		}
-		component.Status.LinkedServices = linkedSecrets
-	}
+	component.Status.LinkedServices = linkedSecrets
 
 	component.Namespace = client.Namespace
 	component.Spec.App = applicationName
@@ -1584,12 +1580,22 @@ func getRemoteComponentMetadata(client *occlient.Client, componentName string, a
 }
 
 // setLinksServiceNames sets the service name of the links from the info in ServiceBindingRequests present in the cluster
-func setLinksServiceNames(client *occlient.Client, linkedSecrets []SecretMount) error {
-	serviceBindings := map[string]string{}
-	list, err := client.GetKubeClient().ListDynamicResource(kclient.ServiceBindingGroup, kclient.ServiceBindingVersion, kclient.ServiceBindingResource)
-	if err != nil || list == nil {
-		return err
+func setLinksServiceNames(client *occlient.Client, linkedSecrets []SecretMount, selector string) error {
+	ok, err := client.GetKubeClient().IsServiceBindingSupported()
+	if err != nil {
+		return fmt.Errorf("unable to check if service binding is supported: %w", err)
 	}
+
+	serviceBindings := map[string]string{}
+	var list unstructured.UnstructuredList
+	if ok {
+		listDynamicResources, err := client.GetKubeClient().ListDynamicResource(kclient.ServiceBindingGroup, kclient.ServiceBindingVersion, kclient.ServiceBindingResource)
+		if err != nil || listDynamicResources == nil {
+			return err
+		}
+		list = *listDynamicResources
+	}
+
 	for _, u := range list.Items {
 		var sbr servicebinding.ServiceBinding
 		js, err := u.MarshalJSON()
@@ -1609,6 +1615,22 @@ func setLinksServiceNames(client *occlient.Client, linkedSecrets []SecretMount) 
 			serviceBindings[sbr.Status.Secret] = service.Name
 		} else {
 			serviceBindings[sbr.Status.Secret] = service.Kind + "/" + service.Name
+		}
+	}
+
+	if !ok {
+		secrets, err := client.GetKubeClient().ListSecrets(selector)
+		if err != nil {
+			return err
+		}
+		for _, secret := range secrets {
+			serviceName, serviceOK := secret.Labels[service.ServiceLabel]
+			_, linkOK := secret.Labels[service.LinkLabel]
+			if serviceOK && linkOK {
+				if _, ok := serviceBindings[secret.Name]; !ok {
+					serviceBindings[secret.Name] = serviceName
+				}
+			}
 		}
 	}
 

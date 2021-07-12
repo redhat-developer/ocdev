@@ -38,7 +38,7 @@ require (
 	github.com/pborman/uuid v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/posener/complete v1.1.1
-	github.com/redhat-developer/service-binding-operator v0.7.1
+	github.com/redhat-developer/service-binding-operator v0.8.0
 	github.com/securego/gosec/v2 v2.8.0
 	github.com/segmentio/backo-go v0.0.0-20200129164019-23eae7c10bd3 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
@@ -63,6 +63,7 @@ require (
 	k8s.io/klog v1.0.0
 	k8s.io/klog/v2 v2.4.0
 	k8s.io/kubectl v0.20.1
+	sigs.k8s.io/controller-runtime v0.7.0
 	sigs.k8s.io/yaml v1.2.0
 
 )

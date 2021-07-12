@@ -33,7 +33,7 @@ var _ = Describe("odo service command tests for OperatorHub", func() {
 		BeforeEach(func() {
 			// wait till odo can see that all operators installed by setup script in the namespace
 			odoArgs := []string{"catalog", "list", "services"}
-			operators := []string{"redis-operator", "service-binding-operator"}
+			operators := []string{"redis-operator"}
 			for _, operator := range operators {
 				helper.WaitForCmdOut("odo", odoArgs, 5, true, func(output string) bool {
 					return strings.Contains(output, operator)
@@ -168,9 +168,11 @@ var _ = Describe("odo service command tests for OperatorHub", func() {
 
 			When("a nodejs component is created", func() {
 
+				var cmpName string
 				BeforeEach(func() {
+					cmpName = helper.RandString(4)
 					helper.CopyExample(filepath.Join("source", "nodejs"), commonVar.Context)
-					helper.Cmd("odo", "create", "nodejs").ShouldPass()
+					helper.Cmd("odo", "create", "nodejs", cmpName).ShouldPass()
 					helper.Cmd("odo", "config", "set", "Memory", "300M", "-f").ShouldPass()
 				})
 
@@ -190,9 +192,6 @@ var _ = Describe("odo service command tests for OperatorHub", func() {
 					})
 
 					It("should fail if the provided service doesn't exist in the namespace", func() {
-						if os.Getenv("KUBERNETES") == "true" {
-							Skip("This is a OpenShift specific scenario, skipping")
-						}
 						stdOut := helper.Cmd("odo", "link", "Redis/redis-standalone").ShouldFail().Err()
 						Expect(stdOut).To(ContainSubstring("couldn't find service named %q", "Redis/redis-standalone"))
 					})
@@ -294,9 +293,6 @@ var _ = Describe("odo service command tests for OperatorHub", func() {
 						When("a link is created with the service", func() {
 							var stdOut string
 							BeforeEach(func() {
-								if os.Getenv("KUBERNETES") == "true" {
-									Skip("This is a OpenShift specific scenario, skipping")
-								}
 								stdOut = helper.Cmd("odo", "link", "Redis/redis").ShouldPass().Out()
 							})
 
@@ -311,9 +307,6 @@ var _ = Describe("odo service command tests for OperatorHub", func() {
 
 							When("the link is deleted", func() {
 								BeforeEach(func() {
-									if os.Getenv("KUBERNETES") == "true" {
-										Skip("This is a OpenShift specific scenario, skipping")
-									}
 									stdOut = helper.Cmd("odo", "unlink", "Redis/redis").ShouldPass().Out()
 								})
 
@@ -464,10 +457,14 @@ var _ = Describe("odo service command tests for OperatorHub", func() {
 							})
 
 							It("should create the link with the specified name", func() {
-								args := []string{"get", "servicebinding", linkName, "-n", commonVar.Project}
-								commonVar.CliRunner.WaitForRunnerCmdOut(args, 1, true, func(output string) bool {
-									return strings.Contains(output, linkName)
-								})
+								envFromValues := commonVar.CliRunner.GetEnvRefNames(cmpName, "app", commonVar.Project)
+								envFound := false
+								for i := range envFromValues {
+									if strings.Contains(envFromValues[i], linkName) {
+										envFound = true
+									}
+								}
+								Expect(envFound).To(BeTrue())
 							})
 						})
 
@@ -487,11 +484,22 @@ var _ = Describe("odo service command tests for OperatorHub", func() {
 								helper.Cmd("odo", "push").ShouldPass()
 							})
 
-							It("should create a servicebinding resource with bindAsFiles set to true", func() {
-								args := []string{"get", "servicebinding", linkName, "-o", "jsonpath='{.spec.bindAsFiles}'", "-n", commonVar.Project}
-								commonVar.CliRunner.WaitForRunnerCmdOut(args, 1, true, func(output string) bool {
-									return strings.Contains(output, "true")
-								})
+							It("should create a link with bindAsFiles set to true", func() {
+								// check the volume name and mount paths for the container
+								deploymentName, err := util.NamespaceKubernetesObject(cmpName, "app")
+								if err != nil {
+									Expect(err).To(BeNil())
+								}
+								volNamesAndPaths := commonVar.CliRunner.GetVolumeMountNamesandPathsFromContainer(deploymentName, "runtime", commonVar.Project)
+								mountFound := false
+								volNamesAndPathsArr := strings.Fields(volNamesAndPaths)
+								for _, volNamesAndPath := range volNamesAndPathsArr {
+									volNamesAndPathArr := strings.Split(volNamesAndPath, ":")
+									if strings.Contains(volNamesAndPathArr[0], linkName) {
+										mountFound = true
+									}
+								}
+								Expect(mountFound).To(BeTrue())
 							})
 						})
 					})
@@ -544,84 +552,6 @@ spec:`
 						stdOut := helper.Cmd("odo", "service", "create", "--from-file", invalidFileName, "--project", commonVar.Project).ShouldFail().Err()
 						Expect(stdOut).To(ContainSubstring("couldn't find metadata.name in the yaml"))
 					})
-				})
-			})
-		})
-
-		When("one component is deployed", func() {
-			var context0 string
-			var cmp0 string
-
-			BeforeEach(func() {
-				if os.Getenv("KUBERNETES") == "true" {
-					Skip("This is a OpenShift specific scenario, skipping")
-				}
-
-				context0 = helper.CreateNewContext()
-				cmp0 = helper.RandString(5)
-
-				helper.Cmd("odo", "create", "nodejs", cmp0, "--context", context0).ShouldPass()
-				helper.Cmd("odo", "config", "set", "Memory", "300M", "-f", "--context", context0).ShouldPass()
-
-				helper.CopyExample(filepath.Join("source", "devfiles", "nodejs", "project"), context0)
-				helper.CopyExampleDevFile(filepath.Join("source", "devfiles", "nodejs", "devfile.yaml"), filepath.Join(context0, "devfile.yaml"))
-
-				helper.Cmd("odo", "push", "--context", context0).ShouldPass()
-			})
-
-			AfterEach(func() {
-				helper.Cmd("odo", "delete", "-f", "--context", context0).ShouldPass()
-				helper.DeleteDir(context0)
-			})
-
-			It("should fail when linking to itself", func() {
-				stdOut := helper.Cmd("odo", "link", cmp0, "--context", context0).ShouldFail().Err()
-				helper.MatchAllInOutput(stdOut, []string{cmp0, "cannot be linked with itself"})
-			})
-
-			It("should fail if the component doesn't exist and the service name doesn't adhere to the <service-type>/<service-name> format", func() {
-				helper.Cmd("odo", "link", "Redis").ShouldFail()
-				helper.Cmd("odo", "link", "Redis/").ShouldFail()
-				helper.Cmd("odo", "link", "/redis-standalone").ShouldFail()
-			})
-
-			When("another component is deployed", func() {
-				var context1 string
-				var cmp1 string
-
-				BeforeEach(func() {
-					context1 = helper.CreateNewContext()
-					cmp1 = helper.RandString(5)
-
-					helper.Cmd("odo", "create", "nodejs", cmp1, "--context", context1).ShouldPass()
-					helper.Cmd("odo", "config", "set", "Memory", "300M", "-f", "--context", context1).ShouldPass()
-
-					helper.CopyExample(filepath.Join("source", "devfiles", "nodejs", "project"), context1)
-					helper.CopyExampleDevFile(filepath.Join("source", "devfiles", "nodejs", "devfileNestedCompCommands.yaml"), filepath.Join(context1, "devfile.yaml"))
-
-					helper.Cmd("odo", "push", "--context", context1).ShouldPass()
-				})
-
-				AfterEach(func() {
-					helper.Cmd("odo", "delete", "-f", "--context", context1).ShouldPass()
-					helper.DeleteDir(context1)
-				})
-
-				It("should link the two components successfully", func() {
-
-					helper.Cmd("odo", "link", cmp1, "--context", context0).ShouldPass()
-					helper.Cmd("odo", "push", "--context", context0).ShouldPass()
-
-					// check the link exists with the specific name
-					ocArgs := []string{"get", "servicebinding", strings.Join([]string{cmp0, cmp1}, "-"), "-o", "jsonpath='{.status.secret}'", "-n", commonVar.Project}
-					helper.WaitForCmdOut("oc", ocArgs, 1, true, func(output string) bool {
-						return strings.Contains(output, strings.Join([]string{cmp0, cmp1}, "-"))
-					})
-
-					// delete the link and undeploy it
-					helper.Cmd("odo", "unlink", cmp1, "--context", context0).ShouldPass()
-					helper.Cmd("odo", "push", "--context", context0).ShouldPass()
-					commonVar.CliRunner.WaitAndCheckForTerminatingState("servicebinding", commonVar.Project, 1)
 				})
 			})
 		})

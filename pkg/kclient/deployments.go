@@ -21,6 +21,7 @@ import (
 	"k8s.io/klog"
 
 	componentlabels "github.com/openshift/odo/pkg/component/labels"
+	apiMachineryWatch "k8s.io/apimachinery/pkg/watch"
 )
 
 func boolPtr(b bool) *bool {
@@ -137,13 +138,13 @@ func (c *Client) WaitForPodNotReady(name string) error {
 			if !ok {
 				return errors.New("error getting value from resultchan")
 			}
-			if pod, ok := val.Object.(*corev1.Pod); ok {
-				for _, cond := range pod.Status.Conditions {
-					if cond.Type == "Ready" {
-						if cond.Status == corev1.ConditionFalse {
-							return nil
-						}
-					}
+			if val.Type == apiMachineryWatch.Deleted {
+				return nil
+			}
+
+			if val.Type == apiMachineryWatch.Added {
+				if pod, ok := val.Object.(*corev1.Pod); ok && pod.Name != name {
+					return nil
 				}
 			}
 		}
