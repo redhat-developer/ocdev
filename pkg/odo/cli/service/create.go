@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/openshift/odo/pkg/service"
 	"strings"
 	"text/template"
 
@@ -109,31 +110,18 @@ func (o *CreateOptions) Complete(name string, cmd *cobra.Command, args []string)
 		}
 		o.ParametersMap[kvSlice[0]] = kvSlice[1]
 	}
-
+	_, _, err = service.IsOperatorServiceNameValid(args[0])
+	if err != nil {
+		return fmt.Errorf("invalid operator name and service catalog not supported %w", err)
+	}
 	err = validDevfileDirectory(o.componentContext)
 	if err != nil {
 		return err
 	}
-
-	// decide which service backend to use
-	if o.fromFile != "" {
-		// fromFile is supported only for Operator backend
-		o.Backend = NewOperatorBackend()
-		// since interactive mode is not supported for Operators yet, set it to false
-		o.interactive = false
-
-		return o.Backend.CompleteServiceCreate(o, cmd, args)
-	}
-
-	// check if interactive mode is requested
-	if len(args) == 0 {
-		o.interactive = true
-		// only Service Catalog backend supports interactive mode for service creation
-		o.Backend = NewServiceCatalogBackend()
-	} else {
-		o.Backend = decideBackend(args[0])
-	}
-
+	// use operator backend only
+	o.Backend = NewOperatorBackend()
+	// since interactive mode is not supported for Operators yet, set it to false
+	o.interactive = false
 	return o.Backend.CompleteServiceCreate(o, cmd, args)
 }
 
@@ -143,7 +131,6 @@ func (o *CreateOptions) Validate() (err error) {
 	if o.interactive {
 		return nil
 	}
-
 	return o.Backend.ValidateServiceCreate(o)
 }
 

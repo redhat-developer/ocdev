@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"github.com/openshift/odo/pkg/service"
 	"strings"
 
 	"github.com/openshift/odo/pkg/log"
@@ -57,8 +58,13 @@ func (o *DeleteOptions) Complete(name string, cmd *cobra.Command, args []string)
 		return err
 	}
 
+	_, _, err = service.IsOperatorServiceNameValid(args[0])
+	if err != nil {
+		return fmt.Errorf("invalid operator name and service catalog not supported %w", err)
+	}
+
 	// decide which service backend to use
-	o.Backend = decideBackend(args[0])
+	o.Backend = NewOperatorBackend()
 	o.serviceName = args[0]
 
 	return

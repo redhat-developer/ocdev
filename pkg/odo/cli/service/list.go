@@ -2,14 +2,8 @@ package service
 
 import (
 	"fmt"
-	"os"
-	"text/tabwriter"
-
-	"github.com/openshift/odo/pkg/log"
-	"github.com/openshift/odo/pkg/machineoutput"
 	"github.com/openshift/odo/pkg/odo/cli/component"
 	"github.com/openshift/odo/pkg/odo/genericclioptions"
-	odoutil "github.com/openshift/odo/pkg/odo/util"
 	svc "github.com/openshift/odo/pkg/service"
 	"github.com/spf13/cobra"
 	ktemplates "k8s.io/kubectl/pkg/util/templates"
@@ -62,49 +56,39 @@ func (o *ServiceListOptions) Complete(name string, cmd *cobra.Command, args []st
 // Validate validates the ServiceListOptions based on completed values
 func (o *ServiceListOptions) Validate() (err error) {
 	if !o.csvSupport {
-		// Throw error if project and application values are not available.
-		// This will most likely be the case when user does odo service list from outside a component directory and
-		// doesn't provide --app and/or --project flags
-		if o.Context.Project == "" || o.Context.Application == "" {
-			return odoutil.ThrowContextError()
-		}
+		return fmt.Errorf("operator backed services not installed and service catalog is no longer supported")
 	}
 	return
 }
 
 // Run contains the logic for the odo service list command
 func (o *ServiceListOptions) Run(cmd *cobra.Command) (err error) {
-	if o.csvSupport {
-		// if cluster supports Operators, we list only operator backed services
-		// and not service catalog ones
-		return o.listOperatorServices()
-	}
-
-	return o.listServiceCatalogServices()
+	return o.listOperatorServices()
 }
 
-func (o *ServiceListOptions) listServiceCatalogServices() (err error) {
-	services, err := svc.ListWithDetailedStatus(o.Client, o.Application)
-	if err != nil {
-		return fmt.Errorf("Service catalog is not enabled within your cluster: %v", err)
-	}
-
-	if len(services.Items) == 0 {
-		return fmt.Errorf("There are no services deployed for this application")
-	}
-
-	if log.IsJSON() {
-		machineoutput.OutputSuccess(services)
-	} else {
-		w := tabwriter.NewWriter(os.Stdout, 5, 2, 3, ' ', tabwriter.TabIndent)
-		fmt.Fprintln(w, "NAME", "\t", "TYPE", "\t", "PLAN", "\t", "STATUS")
-		for _, comp := range services.Items {
-			fmt.Fprintln(w, comp.ObjectMeta.Name, "\t", comp.Spec.Type, "\t", comp.Spec.Plan, "\t", comp.Status.Status)
-		}
-		w.Flush()
-	}
-	return
-}
+//TODO: keeping this for tracking purposes will be removed after backend is removed after backend is removed
+//func (o *ServiceListOptions) listServiceCatalogServices() (err error) {
+//	services, err := svc.ListWithDetailedStatus(o.Client, o.Application)
+//	if err != nil {
+//		return fmt.Errorf("Service catalog is not enabled within your cluster: %v", err)
+//	}
+//
+//	if len(services.Items) == 0 {
+//		return fmt.Errorf("There are no services deployed for this application")
+//	}
+//
+//	if log.IsJSON() {
+//		machineoutput.OutputSuccess(services)
+//	} else {
+//		w := tabwriter.NewWriter(os.Stdout, 5, 2, 3, ' ', tabwriter.TabIndent)
+//		fmt.Fprintln(w, "NAME", "\t", "TYPE", "\t", "PLAN", "\t", "STATUS")
+//		for _, comp := range services.Items {
+//			fmt.Fprintln(w, comp.ObjectMeta.Name, "\t", comp.Spec.Type, "\t", comp.Spec.Plan, "\t", comp.Status.Status)
+//		}
+//		w.Flush()
+//	}
+//	return
+//}
 
 // NewCmdServiceList implements the odo service list command.
 func NewCmdServiceList(name, fullName string) *cobra.Command {

@@ -574,6 +574,14 @@ func SplitServiceKindName(serviceName string) (string, string, error) {
 	return kind, name, nil
 }
 
+func isValidOperatorBackendName(arg string) bool {
+	_, _, err := SplitServiceKindName(arg)
+	if err != nil {
+		return false
+	}
+	return true
+}
+
 // GetServiceClassAndPlans returns the service class details with the associated plans
 // serviceName is the name of the service class
 // the first parameter returned is the ServiceClass object
