@@ -3,7 +3,6 @@ package search
 import (
 	"fmt"
 
-	"github.com/openshift/odo/pkg/catalog"
 	"github.com/openshift/odo/pkg/odo/cli/catalog/util"
 	"github.com/openshift/odo/pkg/odo/genericclioptions"
 	olm "github.com/operator-framework/api/pkg/operators/v1alpha1"
@@ -18,7 +17,6 @@ var serviceExample = `  # Search for a service
 // SearchServiceOptions encapsulates the options for the odo catalog describe service command
 type SearchServiceOptions struct {
 	searchTerm string
-	services   catalog.ServiceTypeList
 	// generic context options common to all commands
 	csvs *olm.ClusterServiceVersionList
 	*genericclioptions.Context
