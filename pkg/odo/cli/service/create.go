@@ -110,10 +110,14 @@ func (o *CreateOptions) Complete(name string, cmd *cobra.Command, args []string)
 		}
 		o.ParametersMap[kvSlice[0]] = kvSlice[1]
 	}
-	_, _, err = service.IsOperatorServiceNameValid(args[0])
-	if err != nil {
-		return fmt.Errorf("invalid operator name and service catalog not supported %w", err)
+	//validate name of service if it is not from a file
+	if o.fromFile == "" {
+		_, _, err = service.IsOperatorServiceNameValid(args[0])
+		if err != nil {
+			return fmt.Errorf("invalid operator name and service catalog not supported %w", err)
+		}
 	}
+
 	err = validDevfileDirectory(o.componentContext)
 	if err != nil {
 		return err
