@@ -98,7 +98,8 @@ func TestAddVolumeMountToContainers(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.podName, func(t *testing.T) {
 			containers := []v1.Container{tt.container}
-			addVolumeMountToContainers(containers, tt.volumeName, tt.containerMountPathsMap)
+			initContainers := []v1.Container{}
+			addVolumeMountToContainers(containers, initContainers, tt.volumeName, tt.containerMountPathsMap)
 
 			mountPathCount := 0
 			for _, container := range containers {
@@ -307,7 +308,8 @@ func TestGetVolumesAndVolumeMounts(t *testing.T) {
 				}
 			}
 
-			pvcVols, err := GetVolumesAndVolumeMounts(devObj, containers, tt.volumeNameToVolInfo, options)
+			initContainers := []v1.Container{}
+			pvcVols, err := GetVolumesAndVolumeMounts(devObj, containers, initContainers, tt.volumeNameToVolInfo, options)
 			if !tt.wantErr && err != nil {
 				t.Errorf("TestGetVolumesAndVolumeMounts unexpected error: %v", err)
 				return

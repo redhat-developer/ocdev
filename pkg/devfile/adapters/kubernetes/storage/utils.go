@@ -2,6 +2,7 @@ package storage
 
 import (
 	"fmt"
+	"strings"
 
 	devfileParser "github.com/devfile/library/pkg/devfile/parser"
 	parsercommon "github.com/devfile/library/pkg/devfile/parser/data/v2/common"
@@ -28,7 +29,7 @@ type VolumeInfo struct {
 // GetVolumesAndVolumeMounts gets the PVC volumes and updates the containers with the volume mounts.
 // volumeNameToVolInfo is a map of the devfile volume name to the volume info containing the pvc name and the volume name.
 // To be moved to devfile/library.
-func GetVolumesAndVolumeMounts(devfileObj devfileParser.DevfileObj, containers []corev1.Container, volumeNameToVolInfo map[string]VolumeInfo, options parsercommon.DevfileOptions) ([]corev1.Volume, error) {
+func GetVolumesAndVolumeMounts(devfileObj devfileParser.DevfileObj, containers []corev1.Container, initContainers []corev1.Container, volumeNameToVolInfo map[string]VolumeInfo, options parsercommon.DevfileOptions) ([]corev1.Volume, error) {
 
 	containerComponents, err := devfileObj.Data.GetDevfileContainerComponents(options)
 	if err != nil {
@@ -49,7 +50,7 @@ func GetVolumesAndVolumeMounts(devfileObj devfileParser.DevfileObj, containers [
 			}
 		}
 
-		addVolumeMountToContainers(containers, volInfo.VolumeName, containerNameToMountPaths)
+		addVolumeMountToContainers(containers, initContainers, volInfo.VolumeName, containerNameToMountPaths)
 	}
 	return pvcVols, nil
 }
@@ -71,13 +72,25 @@ func getPVC(volumeName, pvcName string) corev1.Volume {
 // addVolumeMountToContainers adds the Volume Mounts in containerNameToMountPaths to the containers for a given pvc and volumeName
 // containerNameToMountPaths is a map of a container name to an array of its Mount Paths.
 // To be moved to devfile/library.
-func addVolumeMountToContainers(containers []corev1.Container, volumeName string, containerNameToMountPaths map[string][]string) {
+func addVolumeMountToContainers(containers []corev1.Container, initContainers []corev1.Container, volumeName string, containerNameToMountPaths map[string][]string) {
 
 	for containerName, mountPaths := range containerNameToMountPaths {
 		for i := range containers {
 			if containers[i].Name == containerName {
 				for _, mountPath := range mountPaths {
 					containers[i].VolumeMounts = append(containers[i].VolumeMounts, corev1.VolumeMount{
+						Name:      volumeName,
+						MountPath: mountPath,
+						SubPath:   "",
+					},
+					)
+				}
+			}
+		}
+		for i := range initContainers {
+			if strings.HasPrefix(initContainers[i].Name, containerName) {
+				for _, mountPath := range mountPaths {
+					initContainers[i].VolumeMounts = append(initContainers[i].VolumeMounts, corev1.VolumeMount{
 						Name:      volumeName,
 						MountPath: mountPath,
 						SubPath:   "",

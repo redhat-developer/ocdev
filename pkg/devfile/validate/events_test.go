@@ -30,7 +30,7 @@ func Test_validateEvents(t *testing.T) {
 					PreStart:  []string{"asdf"},
 				},
 			},
-			wantErr: true,
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {

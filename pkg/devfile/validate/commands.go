@@ -24,8 +24,8 @@ func validateCommands(commandsMap map[string]devfilev1.Command) (err error) {
 // 2. if composite command, it should not be of kind run
 func validateCommand(command devfilev1.Command) (err error) {
 
-	// devfile command type for odo must be exec or composite
-	if command.Exec == nil && command.Composite == nil {
+	// devfile command type for odo must be exec, apply or composite
+	if command.Exec == nil && command.Apply == nil && command.Composite == nil {
 		return &UnsupportedOdoCommandError{commandId: command.Id}
 	}
 
