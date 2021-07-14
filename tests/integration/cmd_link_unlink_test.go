@@ -52,40 +52,165 @@ var _ = Describe("odo link and unlink command tests", func() {
 			helper.Cmd("odo", "url", "create", "--port", "8080", "--context", backendContext).ShouldPass()
 			helper.Cmd("odo", "push", "--context", backendContext).ShouldPass()
 		})
+
 		JustAfterEach(func() {
 			helper.DeleteDir(frontendContext)
 			helper.DeleteDir(backendContext)
 		})
-		When("linking the two components", func() {
+
+		When("a link is created between the two components", func() {
 			JustBeforeEach(func() {
 				// we link
-				helper.Cmd("odo", "link", "backend", "--context", frontendContext).ShouldPass()
-				helper.Cmd("odo", "push", "--context", frontendContext).ShouldPass()
+				helper.Chdir(frontendContext)
+				helper.Cmd("odo", "link", "backend").ShouldPass()
 			})
-			JustAfterEach(func() {})
 
-			It("should successfully link", func() {
-				By("ensuring that the proper envFrom entry was created", func() {
-					envFromOutput := oc.GetEnvFromEntry("frontend", "app", commonVar.Project, "deployment")
-					Expect(envFromOutput).To(ContainSubstring("backend"))
-					helper.HttpWaitFor(frontendURL, "Hello world from node.js!", 20, 1)
+			JustAfterEach(func() {
+				helper.Chdir(commonVar.Context)
+			})
+
+			It("should find the link in odo describe", func() {
+				stdOut := helper.Cmd("odo", "describe").ShouldPass().Out()
+				Expect(stdOut).To(ContainSubstring("Linked Services"))
+				Expect(stdOut).To(ContainSubstring("backend"))
+			})
+
+			When("the link is pushed", func() {
+				JustBeforeEach(func() {
+					helper.Cmd("odo", "push").ShouldPass()
 				})
-				By("not allowing re-linking", func() {
-					outputErr := helper.Cmd("odo", "link", "backend", "--context", frontendContext).ShouldFail().Err()
-					Expect(outputErr).To(ContainSubstring("already linked"))
+
+				JustAfterEach(func() {})
+
+				It("should successfully link", func() {
+					By("ensuring that the proper envFrom entry was created", func() {
+						envFromOutput := oc.GetEnvFromEntry("frontend", "app", commonVar.Project, "deployment")
+						Expect(envFromOutput).To(ContainSubstring("backend"))
+						helper.HttpWaitFor(frontendURL, "Hello world from node.js!", 20, 1)
+					})
+					By("finding the link in odo describe", func() {
+						stdOut := helper.Cmd("odo", "describe").ShouldPass().Out()
+						Expect(stdOut).To(ContainSubstring("Linked Services"))
+						Expect(stdOut).To(ContainSubstring("backend"))
+						Expect(stdOut).To(ContainSubstring("SERVICE_BACKEND_IP"))
+						Expect(stdOut).To(ContainSubstring("SERVICE_BACKEND_PORT"))
+					})
+					By("finding the linked environment variable", func() {
+						stdOut := helper.Cmd("odo", "exec", "--", "sh", "-c", "echo $SERVICE_BACKEND_IP").ShouldPass().Out()
+						Expect(stdOut).To(Not(BeEmpty()))
+					})
+					By("not allowing re-linking", func() {
+						outputErr := helper.Cmd("odo", "link", "backend").ShouldFail().Err()
+						Expect(outputErr).To(ContainSubstring("already linked"))
+					})
+				})
+
+				It("should successfully delete component after linked component is deleted", func() {
+					// Testing: https://github.com/openshift/odo/issues/2355
+					helper.Cmd("odo", "delete", "-f", "--context", backendContext).ShouldPass()
+					helper.Cmd("odo", "delete", "-f").ShouldPass()
+				})
+
+				When("unlinking the two components", func() {
+					JustBeforeEach(func() {
+						helper.Cmd("odo", "unlink", "backend", "--context", frontendContext).ShouldPass()
+					})
+					It("should find the link in odo describe", func() {
+						stdOut := helper.Cmd("odo", "describe").ShouldPass().Out()
+						Expect(stdOut).To(ContainSubstring("Linked Services"))
+						Expect(stdOut).To(ContainSubstring("backend"))
+						Expect(stdOut).To(ContainSubstring("SERVICE_BACKEND_IP"))
+						Expect(stdOut).To(ContainSubstring("SERVICE_BACKEND_PORT"))
+					})
+					It("should not allow unlinking again", func() {
+						stdOut := helper.Cmd("odo", "unlink", "backend", "--context", frontendContext).ShouldFail().Err()
+						Expect(stdOut).To(ContainSubstring("failed to unlink the component \"backend\" since no link was found in the configuration referring this component"))
+					})
+
+					When("odo push is executed", func() {
+						JustBeforeEach(func() {
+							helper.Cmd("odo", "push", "--context", frontendContext).ShouldPass()
+						})
+						JustAfterEach(func() {})
+						It("should no longer find the link in odo describe", func() {
+							stdOut := helper.Cmd("odo", "describe").ShouldPass().Out()
+							Expect(stdOut).ToNot(ContainSubstring("Linked Services"))
+							Expect(stdOut).ToNot(ContainSubstring("backend"))
+						})
+					})
 				})
 			})
+		})
+		When("a link is created between the two components with --bind-as-files", func() {
+			JustBeforeEach(func() {
+				helper.Chdir(frontendContext)
+				helper.Cmd("odo", "link", "backend", "--bind-as-files").ShouldPass()
+			})
+			JustAfterEach(func() {
+				helper.Chdir(commonVar.Context)
+			})
+			When("the component is pushed", func() {
+				JustBeforeEach(func() {
+					helper.Cmd("odo", "push").ShouldPass()
+				})
 
-			It("should successfully unlink", func() {
-				helper.Cmd("odo", "unlink", "backend", "--context", frontendContext).ShouldPass()
-				helper.Cmd("odo", "push", "--context", frontendContext).ShouldPass()
+				JustAfterEach(func() {})
+
+				It("should successfully link", func() {
+					By("ensuring that the proper envFrom entry was created", func() {
+						envFromOutput := oc.GetEnvFromEntry("frontend", "app", commonVar.Project, "deployment")
+						Expect(envFromOutput).To(ContainSubstring("backend"))
+						helper.HttpWaitFor(frontendURL, "Hello world from node.js!", 20, 1)
+					})
+
+					By("finding the link in odo describe", func() {
+						stdOut := helper.Cmd("odo", "describe").ShouldPass().Out()
+						Expect(stdOut).To(ContainSubstring("Linked Services"))
+						Expect(stdOut).To(ContainSubstring("backend"))
+						Expect(stdOut).To(ContainSubstring("/bindings"))
+					})
+
+					By("finding the linked environment variable", func() {
+						stdOut := helper.Cmd("odo", "exec", "--", "ls", "/bindings").ShouldPass().Out()
+						Expect(stdOut).To(Not(ContainSubstring("backend")))
+					})
+
+					By("not allowing re-linking", func() {
+						outputErr := helper.Cmd("odo", "link", "backend").ShouldFail().Err()
+						Expect(outputErr).To(ContainSubstring("already linked"))
+					})
+				})
+				When("unlinking the two components", func() {
+					JustBeforeEach(func() {
+						helper.Cmd("odo", "unlink", "backend", "--context", frontendContext).ShouldPass()
+					})
+					It("should find the link in odo describe", func() {
+						stdOut := helper.Cmd("odo", "describe").ShouldPass().Out()
+						Expect(stdOut).To(ContainSubstring("Linked Services"))
+						Expect(stdOut).To(ContainSubstring("backend"))
+						Expect(stdOut).To(ContainSubstring("/bindings"))
+					})
+
+					It("should not allow unlinking again", func() {
+						stdOut := helper.Cmd("odo", "unlink", "backend", "--context", frontendContext).ShouldFail().Err()
+						Expect(stdOut).To(ContainSubstring("failed to unlink the component \"backend\" since no link was found in the configuration referring this component"))
+					})
+
+					When("odo push is executed", func() {
+						JustBeforeEach(func() {
+							helper.Cmd("odo", "push", "--context", frontendContext).ShouldPass()
+						})
+						JustAfterEach(func() {})
+						It("should no longer find the link in odo describe", func() {
+							stdOut := helper.Cmd("odo", "describe").ShouldPass().Out()
+							Expect(stdOut).ToNot(ContainSubstring("Linked Services"))
+							Expect(stdOut).ToNot(ContainSubstring("backend"))
+						})
+					})
+				})
+
 			})
 
-			It("should successfully delete component after linked component is deleted", func() {
-				// Testing: https://github.com/openshift/odo/issues/2355
-				helper.Cmd("odo", "delete", "-f", "--context", backendContext).ShouldPass()
-				helper.Cmd("odo", "delete", "-f", "--context", frontendContext).ShouldPass()
-			})
 		})
 	})
 })
