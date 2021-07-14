@@ -116,8 +116,8 @@ func (o *CreateOptions) Complete(name string, cmd *cobra.Command, args []string)
 	// use operator backend only
 	o.Backend = NewOperatorBackend()
 	// since interactive mode is not supported for Operators yet, set it to false
-	// if it is already true, we error out
-	if o.interactive || (o.fromFile == "" && len(args) != 1) {
+	// if it is already true, or from file is not provided and no args are provided either we error out
+	if o.interactive || (o.fromFile == "" && (len(args) != 1 && len(args) != 2)) {
 		return fmt.Errorf("odo doesn't support interactive mode for creating Operator backed service")
 	}
 	o.interactive = false
