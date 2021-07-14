@@ -52,7 +52,6 @@ func (o *DeleteOptions) Complete(name string, cmd *cobra.Command, args []string)
 	if err != nil {
 		return err
 	}
-
 	err = validDevfileDirectory(o.componentContext)
 	if err != nil {
 		return err
