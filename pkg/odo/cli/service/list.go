@@ -66,30 +66,6 @@ func (o *ServiceListOptions) Run(cmd *cobra.Command) (err error) {
 	return o.listOperatorServices()
 }
 
-//TODO: keeping this for tracking purposes will be removed after backend is removed after backend is removed
-//func (o *ServiceListOptions) listServiceCatalogServices() (err error) {
-//	services, err := svc.ListWithDetailedStatus(o.Client, o.Application)
-//	if err != nil {
-//		return fmt.Errorf("Service catalog is not enabled within your cluster: %v", err)
-//	}
-//
-//	if len(services.Items) == 0 {
-//		return fmt.Errorf("There are no services deployed for this application")
-//	}
-//
-//	if log.IsJSON() {
-//		machineoutput.OutputSuccess(services)
-//	} else {
-//		w := tabwriter.NewWriter(os.Stdout, 5, 2, 3, ' ', tabwriter.TabIndent)
-//		fmt.Fprintln(w, "NAME", "\t", "TYPE", "\t", "PLAN", "\t", "STATUS")
-//		for _, comp := range services.Items {
-//			fmt.Fprintln(w, comp.ObjectMeta.Name, "\t", comp.Spec.Type, "\t", comp.Spec.Plan, "\t", comp.Status.Status)
-//		}
-//		w.Flush()
-//	}
-//	return
-//}
-
 // NewCmdServiceList implements the odo service list command.
 func NewCmdServiceList(name, fullName string) *cobra.Command {
 	o := NewServiceListOptions()
