@@ -41,6 +41,7 @@ mkdir -p %{gopath}/src/github.com/openshift
 ln -s "$(pwd)" %{gopath}/src/github.com/openshift/odo
 export GOPATH=%{gopath}
 cd %{gopath}/src/github.com/openshift/odo
+go mod edit -go=%{golang_version}
 %ifarch x86_64
 # go test -race is not supported on all arches
 GOFLAGS='-mod=vendor' make test
