@@ -124,7 +124,7 @@ func (o *LinkOptions) Validate() (err error) {
 		return err
 	}
 
-	if o.csvSupport && o.Context.EnvSpecificInfo != nil {
+	if o.Context.EnvSpecificInfo != nil {
 		return
 	}
 

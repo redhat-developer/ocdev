@@ -90,3 +90,25 @@ func GetAnnotationsDeployment(path, componentName, appName, projectName string) 
 	}
 	return mapOutput
 }
+
+// GetSecrets gets all the secrets belonging to the project
+func GetSecrets(path, project string) string {
+	session := CmdRunner(path, "get", "secrets", "--namespace", project)
+	Eventually(session).Should(gexec.Exit(0))
+	output := string(session.Wait().Out.Contents())
+	return output
+}
+
+// GetEnvRefNames gets the ref values from the envFroms of the deployment belonging to the given data
+func GetEnvRefNames(path, componentName, appName, projectName string) []string {
+	selector := fmt.Sprintf("--selector=%s=%s,%s=%s", labels.ComponentLabel, componentName, applabels.ApplicationLabel, appName)
+	output := Cmd(path, "get", "deployment", selector, "--namespace", projectName,
+		"-o", "jsonpath='{range .items[0].spec.template.spec.containers[0].envFrom[*]}{.secretRef.name}{\"\\n\"}{end}'").ShouldPass().Out()
+
+	var result []string
+	for _, line := range strings.Split(output, "\n") {
+		line = strings.TrimPrefix(line, "'")
+		result = append(result, strings.TrimSpace(line))
+	}
+	return result
+}

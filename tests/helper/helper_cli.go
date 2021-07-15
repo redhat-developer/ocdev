@@ -19,6 +19,7 @@ type CliRunner interface {
 	DeleteNamespaceProject(projectName string)
 	DeletePod(podName string, projectName string)
 	GetEnvsDevFileDeployment(componentName, appName, projectName string) map[string]string
+	GetEnvRefNames(componentName, appName, projectName string) []string
 	GetPVCSize(compName, storageName, namespace string) string
 	GetAllPVCNames(namespace string) []string
 	GetPodInitContainers(compName, namespace string) []string
@@ -31,4 +32,5 @@ type CliRunner interface {
 	WaitForRunnerCmdOut(args []string, timeout int, errOnFail bool, check func(output string) bool, includeStdErr ...bool) bool
 	PodsShouldBeRunning(project string, regex string)
 	CreateSecret(secretName, secretPass, project string)
+	GetSecrets(project string) string
 }
