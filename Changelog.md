@@ -4,6 +4,8 @@
 
 ### Feature/Enhancements
 
+- Support for `preStart` lifecycle events ([#4901](https://github.com/openshift/odo/issues/4901))
+
 ### Bug Fixes
 
 ### Tests
