@@ -6,12 +6,6 @@ import (
 )
 
 var _ = Describe("odo devfile config command tests", func() {
-	const (
-		testName      = "testname"
-		testMemory    = "500Mi"
-		testDebugPort = "8888"
-		fakeParameter = "fakeParameter"
-	)
 
 	var commonVar helper.CommonVar
 
@@ -26,46 +20,73 @@ var _ = Describe("odo devfile config command tests", func() {
 		helper.CommonAfterEach(commonVar)
 	})
 
-	Context("When executing config view", func() {
-		It("Should view all default parameters", func() {
-			helper.Cmd("odo", "create", "nodejs").ShouldPass()
-			output := helper.Cmd("odo", "config", "view").ShouldPass().Out()
-			wantOutput := []string{
-				"nodejs",
-				"Ports",
-				"Memory",
-			}
-			helper.MatchAllInOutput(output, wantOutput)
-		})
+	It("should fail to set and unset an invalid parameter", func() {
+		const fakeParameter = "fakeParameter"
+		helper.Cmd("odo", "config", "set", fakeParameter, fakeParameter, "-f").ShouldFail()
+		helper.Cmd("odo", "config", "unset", fakeParameter, "-f").ShouldFail()
 	})
 
-	Context("When executing config set and unset", func() {
-		It("Should successfully set and unset the parameters", func() {
+	When("a component is created", func() {
+		BeforeEach(func() {
 			helper.Cmd("odo", "create", "nodejs").ShouldPass()
-			helper.Cmd("odo", "config", "set", "Name", testName, "-f").ShouldPass()
-			helper.Cmd("odo", "config", "set", "Ports", testDebugPort, "-f").ShouldPass()
-			helper.Cmd("odo", "config", "set", "Memory", testMemory, "-f").ShouldPass()
-			output := helper.Cmd("odo", "config", "view").ShouldPass().Out()
-			wantOutput := []string{
-				testName,
-				testMemory,
-				testDebugPort,
-			}
-			helper.MatchAllInOutput(output, wantOutput)
-
-			helper.Cmd("odo", "config", "unset", "Ports", "-f").ShouldPass()
-			output = helper.Cmd("odo", "config", "view").ShouldPass().Out()
-			dontWantOutput := []string{
-				testDebugPort,
-			}
-			helper.DontMatchAllInOutput(output, dontWantOutput)
-			helper.Cmd("odo", "push", "--project", commonVar.Project).ShouldPass()
 		})
 
-		It("Should fail to set and unset an invalid parameter", func() {
-			helper.Cmd("odo", "create", "nodejs").ShouldPass()
-			helper.Cmd("odo", "config", "set", fakeParameter, fakeParameter, "-f").ShouldFail()
-			helper.Cmd("odo", "config", "unset", fakeParameter, "-f").ShouldFail()
+		When("executing config view", func() {
+			var output string
+
+			BeforeEach(func() {
+				output = helper.Cmd("odo", "config", "view").ShouldPass().Out()
+			})
+
+			It("should view all default parameters", func() {
+				wantOutput := []string{
+					"nodejs",
+					"Ports",
+					"Memory",
+				}
+				helper.MatchAllInOutput(output, wantOutput)
+			})
+		})
+
+		When("executing config set", func() {
+
+			const (
+				testName      = "testname"
+				testMemory    = "500Mi"
+				testDebugPort = "8888"
+			)
+
+			BeforeEach(func() {
+				helper.Cmd("odo", "config", "set", "Name", testName, "-f").ShouldPass()
+				helper.Cmd("odo", "config", "set", "Ports", testDebugPort, "-f").ShouldPass()
+				helper.Cmd("odo", "config", "set", "Memory", testMemory, "-f").ShouldPass()
+			})
+
+			It("should successfully set the parameters", func() {
+				output := helper.Cmd("odo", "config", "view").ShouldPass().Out()
+				wantOutput := []string{
+					testName,
+					testMemory,
+					testDebugPort,
+				}
+				helper.MatchAllInOutput(output, wantOutput)
+			})
+
+			When("unsettting a parameter", func() {
+
+				BeforeEach(func() {
+					helper.Cmd("odo", "config", "unset", "Ports", "-f").ShouldPass()
+				})
+
+				It("should successfully unset the parameter", func() {
+					output := helper.Cmd("odo", "config", "view").ShouldPass().Out()
+					dontWantOutput := []string{
+						testDebugPort,
+					}
+					helper.DontMatchAllInOutput(output, dontWantOutput)
+					helper.Cmd("odo", "push", "--project", commonVar.Project).ShouldPass()
+				})
+			})
 		})
 	})
 })
