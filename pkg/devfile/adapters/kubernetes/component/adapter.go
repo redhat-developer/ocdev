@@ -411,16 +411,37 @@ func (a *Adapter) createOrUpdateComponent(componentExists bool, ei envinfo.EnvSp
 	labels["component"] = componentName
 	labels[componentlabels.ComponentTypeLabel] = componentType
 
-	containers, err := generator.GetContainers(a.Devfile, parsercommon.DevfileOptions{})
+	allContainers, err := generator.GetContainers(a.Devfile, parsercommon.DevfileOptions{})
 	if err != nil {
 		return err
+	}
+
+	var initContainers []corev1.Container
+	initContainers, err = generator.GetInitContainers(a.Devfile)
+	if err != nil {
+		return err
+	}
+
+	// https://github.com/devfile/api/issues/532
+	// Because GetContainers() also returns initContainers, we remove the initContainers
+	var containers []corev1.Container
+	for _, container := range allContainers {
+		found := false
+		for _, initContainer := range initContainers {
+			if strings.HasPrefix(initContainer.Name, container.Name) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			containers = append(containers, container)
+		}
 	}
 
 	if len(containers) == 0 {
 		return fmt.Errorf("no valid components found in the devfile")
 	}
 
-	// Add the project volume before generating init containers
 	utils.AddOdoProjectVolume(&containers)
 
 	containers, err = utils.UpdateContainersWithSupervisord(a.Devfile, containers, a.devfileRunCmd, a.devfileDebugCmd, a.devfileDebugPort)
@@ -428,11 +449,6 @@ func (a *Adapter) createOrUpdateComponent(componentExists bool, ei envinfo.EnvSp
 		return err
 	}
 
-	var initContainers []corev1.Container
-	// odo currently does not support PreStart event or apply commands
-	// https://github.com/openshift/odo/issues/4187
-	// after odo support apply commands, should append result from generator.getInitContainers()
-	// initContainers := generator.GetInitContainers(a.Devfile)
 	initContainers = append(initContainers, kclient.GetBootstrapSupervisordInitContainer())
 
 	var odoSourcePVCName string
@@ -462,7 +478,7 @@ func (a *Adapter) createOrUpdateComponent(componentExists bool, ei envinfo.EnvSp
 	}
 
 	// Get PVC volumes and Volume Mounts
-	pvcVolumes, err := storage.GetVolumesAndVolumeMounts(a.Devfile, containers, volumeNameToVolInfo, parsercommon.DevfileOptions{})
+	pvcVolumes, err := storage.GetVolumesAndVolumeMounts(a.Devfile, containers, initContainers, volumeNameToVolInfo, parsercommon.DevfileOptions{})
 	if err != nil {
 		return err
 	}
