@@ -1,11 +1,16 @@
 package component
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"k8s.io/apimachinery/pkg/util/yaml"
+
+	"github.com/devfile/library/pkg/devfile/parser/data"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -215,7 +220,6 @@ func (co *CreateOptions) setComponentName(args []string) (err error) {
 	}
 
 	componentName, err := createDefaultComponentName(
-		co.Context,
 		componentType,
 		*(co.componentSettings.SourceType),
 		co.componentContext,
@@ -245,7 +249,7 @@ func getSourceLocation(componentContext string, currentDirectory string) (string
 	return sourceLocation, nil
 }
 
-func createDefaultComponentName(context *genericclioptions.Context, componentType string, sourceType config.SrcType, sourcePath string) (string, error) {
+func createDefaultComponentName(componentType string, sourceType config.SrcType, sourcePath string) (string, error) {
 	// Retrieve the componentName, if the componentName isn't specified, we will use the default image name
 	var err error
 	finalSourcePath := sourcePath
@@ -369,11 +373,7 @@ func (co *CreateOptions) Complete(name string, cmd *cobra.Command, args []string
 	}
 	co.DevfilePath = DevfilePath
 
-	if util.CheckPathExists(ConfigFilePath) {
-		return errors.New("this directory already contains a component")
-	}
-
-	if util.CheckPathExists(EnvFilePath) && util.CheckPathExists(co.DevfilePath) {
+	if util.CheckPathExists(ConfigFilePath) || (util.CheckPathExists(EnvFilePath) && util.CheckPathExists(co.DevfilePath)) {
 		return errors.New("this directory already contains a component")
 	}
 
@@ -510,7 +510,6 @@ func (co *CreateOptions) Complete(name string, cmd *cobra.Command, args []string
 				} else {
 					var err error
 					componentName, err = createDefaultComponentName(
-						co.Context,
 						componentType,
 						config.LOCAL, // always local for devfile
 						co.componentContext,
@@ -835,7 +834,18 @@ func (co *CreateOptions) devfileRun(cmd *cobra.Command) (err error) {
 			}
 		}
 	}
-	// TODO: this should be replaced with github.com/openshift/odo/pkg/devile.ParseFromFile(DevfilePath)
+	devfileDataObj, err := data.NewDevfileData("2.0.0")
+	if err != nil {
+		return err
+	}
+	if err = yaml.Unmarshal(devfileData, devfileDataObj); err != nil {
+		return err
+	}
+	metadata := devfileDataObj.GetMetadata()
+	metadata.Name = co.devfileMetadata.componentName
+	devfileDataObj.SetMetadata(metadata)
+	devfileData, _ = json.MarshalIndent(devfileDataObj, "", " ")
+	// TODO: this should be replaced with github.com/openshift/odo/pkg/devfile.ParseFromFile(DevfilePath)
 	// But this can be only after we deprecate support for "github based" registries.
 	// When we do that the above "if" will be deleted and parsing from []data won't be necessary
 	devObj, err := devfile.ParseFromData(devfileData)

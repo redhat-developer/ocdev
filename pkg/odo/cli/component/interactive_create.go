@@ -71,7 +71,7 @@ func (co *CreateOptions) SetComponentSettingsInteractively(catalogList catalog.C
 
 	}
 
-	defaultComponentName, err := createDefaultComponentName(co.Context, selectedComponentType, selectedSourceType, selectedSourcePath)
+	defaultComponentName, err := createDefaultComponentName(selectedComponentType, selectedSourceType, selectedSourcePath)
 	if err != nil {
 		return err
 	}
