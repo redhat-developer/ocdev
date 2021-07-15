@@ -10,6 +10,17 @@
 
 ### Documentation
 
+## 2.2.x
+
+### Feature/Enhancements
+
+### Bug Fixes
+- Fix component create and delete help examples([#4904](https://github.com/openshift/odo/pull/4904))
+
+### Tests
+
+### Documentation
+
 ## 2.2.3
 
 ### Feature/Enhancements

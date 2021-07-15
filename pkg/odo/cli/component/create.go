@@ -115,14 +115,17 @@ odo catalog list components
 # Create new Node.js component named 'frontend' with the source in './frontend' directory
 %[1]s nodejs frontend --context ./frontend
 
-# Create new Java component with binary named sample.jar in './target' directory
-%[1]s java:8  --binary target/sample.jar
+# Create new Java component with binary named sample.jar in './target' directory; this flag is specific to S2I
+%[1]s java:8 --s2i --binary target/sample.jar
 
-# Create new Node.js component with source from remote git repository
-%[1]s nodejs --git https://github.com/openshift/nodejs-ex.git
+# Create new Node.js component with source from remote git repository; this flag is specific to S2I
+%[1]s nodejs --s2i --git https://github.com/openshift/nodejs-ex.git
 
 # Create new Node.js component with custom ports and environment variables
-%[1]s nodejs --port 8080,8100/tcp,9100/udp --env key=value,key1=value1`)
+%[1]s nodejs --port 8080,8100/tcp,9100/udp --env key=value,key1=value1
+
+# Create a new Node.js component that is a part of 'myapp' app inside the 'myproject' project 
+%[1]s nodejs --app myapp --project myproject`)
 
 const defaultStarterProjectName = "devfile-starter-project-name"
 

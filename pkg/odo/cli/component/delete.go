@@ -28,10 +28,24 @@ import (
 // DeleteRecommendedCommandName is the recommended delete command name
 const DeleteRecommendedCommandName = "delete"
 
-var deleteExample = ktemplates.Examples(`  # Delete component named 'frontend'. 
+var deleteExample = ktemplates.Examples(`
+# Delete the component present in the current directory from the cluster
+%[1]s
+
+# Delete the component named 'frontend' from the cluster
 %[1]s frontend
-%[1]s frontend --all
-  `)
+
+# Delete the component present in the current directory from the cluster and all of its related local config files("devfile.yaml" and ".odo" directory)
+%[1]s --all
+
+# Delete the component present in the './frontend' directory from the cluster
+%[1]s --context ./frontend
+
+# Delete the component present in the './frontend' directory from the cluster and all of its related local config files("devfile.yaml" and ".odo" directory)
+%[1]s --context ./frontend --all
+
+# Delete the component 'frontend' that is a part of 'myapp' app inside the 'myproject' project from the cluster	
+%[1]s frontend --app myapp --project myproject`)
 
 // DeleteOptions is a container to attach complete, validate and run pattern
 type DeleteOptions struct {
