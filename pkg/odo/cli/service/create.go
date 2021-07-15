@@ -109,31 +109,18 @@ func (o *CreateOptions) Complete(name string, cmd *cobra.Command, args []string)
 		}
 		o.ParametersMap[kvSlice[0]] = kvSlice[1]
 	}
-
 	err = validDevfileDirectory(o.componentContext)
 	if err != nil {
 		return err
 	}
-
-	// decide which service backend to use
-	if o.fromFile != "" {
-		// fromFile is supported only for Operator backend
-		o.Backend = NewOperatorBackend()
-		// since interactive mode is not supported for Operators yet, set it to false
-		o.interactive = false
-
-		return o.Backend.CompleteServiceCreate(o, cmd, args)
+	// use operator backend only
+	o.Backend = NewOperatorBackend()
+	// since interactive mode is not supported for Operators yet, set it to false
+	// if it is already true, or from file is not provided and no args are provided either we error out
+	if o.interactive || (o.fromFile == "" && (len(args) != 1 && len(args) != 2)) {
+		return fmt.Errorf("odo doesn't support interactive mode for creating Operator backed service")
 	}
-
-	// check if interactive mode is requested
-	if len(args) == 0 {
-		o.interactive = true
-		// only Service Catalog backend supports interactive mode for service creation
-		o.Backend = NewServiceCatalogBackend()
-	} else {
-		o.Backend = decideBackend(args[0])
-	}
-
+	o.interactive = false
 	return o.Backend.CompleteServiceCreate(o, cmd, args)
 }
 
@@ -143,7 +130,6 @@ func (o *CreateOptions) Validate() (err error) {
 	if o.interactive {
 		return nil
 	}
-
 	return o.Backend.ValidateServiceCreate(o)
 }
 

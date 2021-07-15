@@ -55,13 +55,11 @@ func (o *DescribeServiceOptions) Complete(name string, cmd *cobra.Command, args 
 		return err
 	}
 
-	// if the argument contains "/" then we assume the user wants to describe a CRD.
-	if _, _, err := service.SplitServiceKindName(args[0]); err == nil {
-		o.backend = NewOperatorBackend()
-	} else {
-		o.backend = NewServiceCatalogBackend()
+	_, _, err = service.IsOperatorServiceNameValid(args[0])
+	if err != nil {
+		return fmt.Errorf("invalid operator name and service catalog not supported %w", err)
 	}
-
+	o.backend = NewOperatorBackend()
 	return o.backend.CompleteDescribeService(o, args)
 }
 

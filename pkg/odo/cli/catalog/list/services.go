@@ -22,8 +22,6 @@ var servicesExample = `  # Get the supported services from service catalog
 
 // ServiceOptions encapsulates the options for the odo catalog list services command
 type ServiceOptions struct {
-	// list of known services
-	services catalog.ServiceTypeList
 	// list of clusterserviceversions (installed by Operators)
 	csvs *olm.ClusterServiceVersionList
 	// generic context options common to all commands
@@ -49,11 +47,6 @@ func (o *ServiceOptions) Complete(name string, cmd *cobra.Command, args []string
 			return err
 		}
 	}
-
-	o.services, _ = catalog.ListSvcCatServices(o.Client)
-
-	o.services = util.FilterHiddenServices(o.services)
-
 	return
 }
 
@@ -65,19 +58,15 @@ func (o *ServiceOptions) Validate() (err error) {
 // Run contains the logic for the command associated with ListServicesOptions
 func (o *ServiceOptions) Run(cmd *cobra.Command) (err error) {
 	if log.IsJSON() {
-		machineoutput.OutputSuccess(newCatalogListOutput(&o.services, o.csvs))
+		machineoutput.OutputSuccess(newCatalogListOutput(o.csvs))
 	} else {
-		if len(o.csvs.Items) == 0 && len(o.services.Items) == 0 {
-			log.Info("no deployable services/operators found")
+		if len(o.csvs.Items) == 0 {
+			log.Info("no deployable operators found")
 			return
 		}
 
 		if len(o.csvs.Items) > 0 {
 			util.DisplayClusterServiceVersions(o.csvs)
-		}
-
-		if len(o.services.Items) > 0 {
-			util.DisplayServices(o.services)
 		}
 	}
 	return
@@ -102,18 +91,16 @@ func NewCmdCatalogListServices(name, fullName string) *cobra.Command {
 type catalogListOutput struct {
 	v1.TypeMeta   `json:",inline"`
 	v1.ObjectMeta `json:"metadata,omitempty"`
-	Services      *catalog.ServiceTypeList `json:"services,omitempty"`
 	// list of clusterserviceversions (installed by Operators)
 	Operators *olm.ClusterServiceVersionList `json:"operators,omitempty"`
 }
 
-func newCatalogListOutput(services *catalog.ServiceTypeList, operators *olm.ClusterServiceVersionList) catalogListOutput {
+func newCatalogListOutput(operators *olm.ClusterServiceVersionList) catalogListOutput {
 	return catalogListOutput{
 		TypeMeta: v1.TypeMeta{
 			Kind:       "List",
 			APIVersion: machineoutput.APIVersion,
 		},
-		Services:  services,
 		Operators: operators,
 	}
 }
