@@ -5,6 +5,11 @@ set -e
 # show commands
 set -x
 
+
+export GOROOT="/usr/lib/golang" 
+export GOPROXY="https://proxy.golang.org,direct"
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/go/bin:/usr/lib/golang 
+
 export CUSTOM_HOMEDIR=$ARTIFACT_DIR
 export PATH=$PATH:$GOPATH/bin
 # set location for golangci-lint cache
@@ -20,4 +25,4 @@ make cross
 cp -r dist $ARTIFACT_DIR
 
 # RPM Tests
-#scripts/rpm-x86_64-test.sh
+scripts/rpm-x86_64-test.sh
